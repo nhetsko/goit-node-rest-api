@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import {Schema, mongoose  } from "mongoose";
 
 const contactSchema = new mongoose.Schema({
     name: {
@@ -15,6 +15,11 @@ const contactSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'user',
+    }
+
 }
 );
 export default mongoose.model("Contact", contactSchema);
