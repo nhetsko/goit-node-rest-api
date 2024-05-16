@@ -1,61 +1,103 @@
+import bcrypt from 'bcrypt';
 import HttpError from "../helpers/HttpError.js";
 import { handleErrors } from "../helpers/handleErrors.js";
-import User from "../models/usersModel.js";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
-import { json } from "express";
+import User from "../models/usersModel.js";
 
 export const register = handleErrors(async (req, res, next) => {
-  const { email, password } = req.body;
-  const emailLowerCase = email.toLowerCase();
-  const user = await User.findOne({ email: emailLowerCase });
+  const { name, email, password } = req.body;
 
-  if (user) {
-    throw HttpError(409, "Email in use");
+  const emailInLowerCase = email.toLowerCase();
+
+  try {
+    const user = await User.findOne({ email: emailInLowerCase });
+
+    if (user !== null) {
+      return res.status(409).send({ message: "User already registered" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      name,
+      email: emailInLowerCase,
+      password: passwordHash,
+    });
+
+    res.status(201).json({
+      user: {
+        email: newUser.email,
+        subscription: newUser.subscription,
+      },
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const passHash = await bcrypt.hash(password, 10);
-
-  const newUser = User.create({
-    email: emailLowerCase,
-    password: passHash,
-  });
-
-  res.status(201).json({ email, subscription: newUser.subscription });
 });
 
 export const login = handleErrors(async (req, res, next) => {
   const { email, password } = req.body;
-  const emailLowerCase = email.toLowerCase();
-  const user = await User.findOne({ email: emailLowerCase });
 
-  if (!user) {
-    throw HttpError(401, "Email or password is wrong");
+  const emailInLowerCase = email.toLowerCase();
+
+  try {
+    const user = await User.findOne({ email: emailInLowerCase });
+
+    if (user === null) {
+      console.log("Email");
+      return res
+        .status(401)
+        .send({ message: "Email or password is incorrect" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (isMatch === false) {
+      console.log("Password");
+      return res
+        .status(401)
+        .send({ message: "Email or password is incorrect" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, name: user.name },
+      process.env.JWT_SECRET,
+      { expiresIn: 60 * 60 },
+    );
+
+    await User.findByIdAndUpdate(user._id, { token });
+ 
+    res.status(200).json({
+      token: token,
+      user: {
+        email: user.email,
+        subscription: user.subscription,
+      },
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const isCompare = await bcrypt.compare(password, user.password);
-
-  if (!isCompare) {
-    throw HttpError(401, "Email or password is wrong");
-  }
-
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: 3600,
-  });
-
-  await User.findByIdAndUpdate(user._id, { token });
-  res
-    .status(200)
-    .json({ token, user: { email, subscription: user.subscription } });
 });
 
-export const logout = handleErrors(async (req, res) => {
-  const { id } = req.user;
-  await User.findByIdAndUpdate(id, { token: "" });
-  res.status(204).end();
+export const logout = handleErrors(async (req, res, next) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { token: null });
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
 });
 
 export const getCurrent = handleErrors(async (req, res, next) => {
   const { email, subscription } = req.user;
   res.json({ email, subscription });
 });
+
+export default {
+  register,
+  login,
+  logout,
+  getCurrent,
+};
+

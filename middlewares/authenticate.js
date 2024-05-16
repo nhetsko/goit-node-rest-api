@@ -1,26 +1,36 @@
-import jwt from 'jsonwebtoken';
-import User from '../models/usersModel.js'
-import HttpError from '../helpers/HttpError.js';
+import jwt from "jsonwebtoken";
+import HttpError from "../helpers/HttpError.js";
+import User from '../models/usersModel.js';
 
-const { JWT_SECRET } = process.env;
-
-const authenticate = async (req, res, next) => {
-  const { authorization = '' } = req.headers;
-  const [bearer, token] = authorization.split(' ');
-  if (bearer !== 'Bearer') {
-    next(HttpError(401, 'Not authorized'));
+export const authenticate  = async (req, _, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return next(HttpError(401));
   }
-  try {
-    const { id } = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(id);
-    if (!user || user.token !== token || !user.token) {
-      next(HttpError(401, 'Not authorized'));
+  const [bearer, token] = authHeader.split(" ");
+  if (bearer !== "Bearer") {
+    return next(HttpError(401));
+  }
+  jwt.verify(token, process.env.JWT_SECRET, async (err, decode) => {
+    if (err) {
+      return next(HttpError(401));
     }
-    req.user = user;
-    next();
-  } catch {
-    next(HttpError(401, 'Not authorized'));
-  }
+    try {
+      const user = await User.findById(decode.id);
+      if (!user || user.token !== token) {
+        throw HttpError(401);
+      }
+      if (!user._id || !user.email || !user.subscription) {
+        throw HttpError(401);
+      }
+      req.user = {
+        id: user._id,
+        email: user.email,
+        subscription: user.subscription,
+      };
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
 };
-
-export default authenticate;
