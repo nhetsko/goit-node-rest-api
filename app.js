@@ -1,8 +1,9 @@
+import path from "node:path";
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
 import 'dotenv/config';
-import contactsRouter from "./routes/index.js";
+import router from "./routes/index.js";
 import './db.js';
 
 const app = express();
@@ -11,7 +12,8 @@ app.use(morgan("tiny"));
 app.use(cors());
 app.use(express.json());
 
-app.use("/", contactsRouter);
+app.use("/avatars", express.static(path.resolve("public/avatars")));
+app.use("/", router);
 
 app.use((_, res) => {
   res.status(404).json({ message: "Route not found" });

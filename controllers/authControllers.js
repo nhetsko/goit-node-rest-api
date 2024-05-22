@@ -18,16 +18,31 @@ export const register = handleErrors(async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    const gravatarUrl = gravatar.url(emailInLowerCase, { s: '200', r: 'pg', d: '404' });
+
+    const response = await axios({
+      url: gravatarUrl,
+      responseType: 'arraybuffer'
+    });
+    const buffer = Buffer.from(response.data, 'binary');
+
+    const avatarFilename = `${emailInLowerCase}-avatar.png`;
+    const avatarPath = path.resolve("public/avatars", avatarFilename);
+    const image = await Jimp.read(buffer);
+    await image.resize(250, 250).writeAsync(avatarPath);
+
     const newUser = await User.create({
       name,
       email: emailInLowerCase,
       password: passwordHash,
+      avatarURL: avatarFilename,
     });
 
     res.status(201).json({
       user: {
         email: newUser.email,
         subscription: newUser.subscription,
+        avatarURL: newUser.avatarURL,
       },
     });
   } catch (error) {
