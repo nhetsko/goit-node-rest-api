@@ -3,6 +3,8 @@ import HttpError from "../helpers/HttpError.js";
 import { handleErrors } from "../helpers/handleErrors.js";
 import jwt from "jsonwebtoken";
 import User from "../models/usersModel.js";
+import gravatar from 'gravatar';
+import path from "node:path";
 
 export const register = handleErrors(async (req, res, next) => {
   const { name, email, password } = req.body;
@@ -18,24 +20,13 @@ export const register = handleErrors(async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const gravatarUrl = gravatar.url(emailInLowerCase, { s: '200', r: 'pg', d: '404' });
-
-    const response = await axios({
-      url: gravatarUrl,
-      responseType: 'arraybuffer'
-    });
-    const buffer = Buffer.from(response.data, 'binary');
-
-    const avatarFilename = `${emailInLowerCase}-avatar.png`;
-    const avatarPath = path.resolve("public/avatars", avatarFilename);
-    const image = await Jimp.read(buffer);
-    await image.resize(250, 250).writeAsync(avatarPath);
+    const gravatarUrl = gravatar.url(emailInLowerCase, { s: '200', r: 'pg', d: 'identicon' });
 
     const newUser = await User.create({
       name,
       email: emailInLowerCase,
       password: passwordHash,
-      avatarURL: avatarFilename,
+      avatarURL: gravatarUrl,
     });
 
     res.status(201).json({
@@ -49,6 +40,7 @@ export const register = handleErrors(async (req, res, next) => {
     next(error);
   }
 });
+
 
 export const login = handleErrors(async (req, res, next) => {
   const { email, password } = req.body;
