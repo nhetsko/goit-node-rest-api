@@ -1,14 +1,14 @@
-import path from "node:path";
-import crypto from "node:crypto";
 import multer from "multer";
+import crypto from "node:crypto";
+import path from "node:path";
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
     cb(null, path.resolve("tmp"));
   },
   filename(req, file, cb) {
-    const extname = path.extname(file.originalname); 
-    const basename = path.basename(file.originalname, extname); 
+    const extname = path.extname(file.originalname);
+    const basename = path.basename(file.originalname, extname);
     const suffix = crypto.randomUUID();
 
     cb(null, `${basename}-${suffix}${extname}`);
@@ -16,4 +16,5 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
 export default upload;

@@ -1,10 +1,11 @@
 import bcrypt from 'bcrypt';
+import fs from "fs/promises";
+import path from "node:path";
 import HttpError from "../helpers/HttpError.js";
 import { handleErrors } from "../helpers/handleErrors.js";
 import jwt from "jsonwebtoken";
 import User from "../models/usersModel.js";
 import gravatar from 'gravatar';
-import path from "node:path";
 
 export const register = handleErrors(async (req, res, next) => {
   const { name, email, password } = req.body;
@@ -101,10 +102,38 @@ export const getCurrent = handleErrors(async (req, res, next) => {
   res.json({ email, subscription });
 });
 
+
+export const updateAvatar = handleErrors(async (req, res, next) => {
+  try {
+    const { path: tempPath, filename } = req.file;
+    const tempFilePath = path.resolve(tempPath);
+    const outputDir = path.resolve("public/avatars");
+    const outputFilePath = path.join(outputDir, filename);
+
+    const image = await Jimp.read(tempFilePath);
+    await image.resize(250, 250).writeAsync(tempFilePath);
+
+    await fs.mkdir(outputDir, { recursive: true });
+
+    await fs.rename(tempFilePath, outputFilePath);
+
+    const avatarURL = `${filename}`;
+    const result = await User.findByIdAndUpdate(
+      req.user.id,
+      { avatarURL },
+      { new: true }
+    );
+
+    res.status(200).json({ avatarURL: result.avatarURL });
+  } catch (error) {
+    next(error);
+  }
+});
 export default {
   register,
   login,
   logout,
   getCurrent,
+  updateAvatar
 };
 
