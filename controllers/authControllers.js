@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import fs from "fs/promises";
+import Jimp from 'jimp';
 import path from "node:path";
 import HttpError from "../helpers/HttpError.js";
 import { handleErrors } from "../helpers/handleErrors.js";
@@ -107,7 +108,7 @@ export const updateAvatar = handleErrors(async (req, res, next) => {
   try {
     const { path: tempPath, filename } = req.file;
     const tempFilePath = path.resolve(tempPath);
-    const outputDir = path.resolve("public/avatars");
+    const outputDir = path.resolve('public/avatars');
     const outputFilePath = path.join(outputDir, filename);
 
     const image = await Jimp.read(tempFilePath);
@@ -117,7 +118,7 @@ export const updateAvatar = handleErrors(async (req, res, next) => {
 
     await fs.rename(tempFilePath, outputFilePath);
 
-    const avatarURL = `${filename}`;
+    const avatarURL = `/avatars/${filename}`;
     const result = await User.findByIdAndUpdate(
       req.user.id,
       { avatarURL },
