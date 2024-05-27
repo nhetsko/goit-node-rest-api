@@ -106,6 +106,9 @@ export const getCurrent = handleErrors(async (req, res, next) => {
 
 export const updateAvatar = handleErrors(async (req, res, next) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
     const { path: tempPath, filename } = req.file;
     const tempFilePath = path.resolve(tempPath);
     const outputDir = path.resolve('public/avatars');
